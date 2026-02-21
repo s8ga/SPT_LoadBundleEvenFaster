@@ -1,0 +1,26 @@
+# Build outputs
+**/bin/
+**/obj/
+**/*.obj
+**/*.o
+**/*.a
+**/*.dll
+**/*.pdb
+
+**/*.7z
+
+# CMake build directories
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/build/
+
+# IDE configurations
+**/.idea/**
+**/.vs/**
+*.user
+*.suo
+
+**/References/Client
+
+**/.sisyphus/**
