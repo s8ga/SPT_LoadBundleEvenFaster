@@ -6,7 +6,7 @@
     <Nullable>disable</Nullable>
     <Authors>SPT</Authors>
     <Copyright></Copyright>
-    <AssemblyVersion>1.7.0</AssemblyVersion>
+    <AssemblyVersion>1.0.1</AssemblyVersion>
     <FileVersion>$(AssemblyVersion)</FileVersion>
     <Configurations>Debug;Release;Package</Configurations>
     <Version>$(AssemblyVersion)</Version>
@@ -110,6 +110,13 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <Target Name="GeneratePluginInfo" BeforeTargets="BeforeCompile">
+    <WriteLinesToFile File="$(IntermediateOutputPath)PluginInfo.cs" Overwrite="true" Lines="namespace SPT_LoadBundleEvenFaster.Plugin { public static class PluginInfo { public const string PLUGIN_VERSION = &quot;$(AssemblyVersion)&quot;%3B } }" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)PluginInfo.cs" />
+    </ItemGroup>
+  </Target>
 
   <Target Name="CopyArtifacts" AfterTargets="Build">
     <ItemGroup>

@@ -17,7 +17,8 @@ using SPT.Common.Utils;
 
 namespace SPT_LoadBundleEvenFaster.Plugin
 {
-    [BepInPlugin("com.s8.sptloadbundleevenfaster", "s8_SPTLoadBundleEvenFaster", "1.0.0")]
+    // This PLUGIN_VERSION is generated from csproj AssenblyVersion directive.
+    [BepInPlugin("com.s8.sptloadbundleevenfaster", "s8_SPTLoadBundleEvenFaster", PluginInfo.PLUGIN_VERSION)]
     [BepInDependency("com.SPT.custom", "4.0.0")]
     // Soft dependency: use if present, otherwise fall back
     [BepInDependency("com.s8.sptpatchcrc32", BepInDependency.DependencyFlags.SoftDependency)]

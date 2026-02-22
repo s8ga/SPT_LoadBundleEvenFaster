@@ -20,12 +20,19 @@
 
 param(
     [switch]$SkipBuild,
-    [switch]$SkipClean,
-    [string]$Version = "1.0.0"
+    [switch]$SkipClean
 )
 
 $ErrorActionPreference = "Stop"
 $ScriptRoot = $PSScriptRoot
+
+# Read version from csproj
+$csprojPath = Join-Path $ScriptRoot "SPT_LoadBundleEvenFaster.Plugin\SPT_LoadBundleEvenFaster.Plugin.csproj"
+[xml]$csproj = Get-Content $csprojPath
+$Version = ($csproj.Project.PropertyGroup | Where-Object { $_.AssemblyVersion } | Select-Object -ExpandProperty AssemblyVersion)
+if (-not $Version) {
+    $Version = "1.0.0"
+}
 
 # Logging functions
 function Write-Log {
@@ -244,7 +251,7 @@ function Main {
 
     Write-Log ""
     Write-Success "=== Build and package completed successfully! ==="
-    Write-Log "Package location: $(Join-Path $ScriptRoot 's8_SPT_LoadBundleEvenFaster-v$Version-win-x86_64.7z')"
+    Write-Log "Package location: $(Join-Path $ScriptRoot `"s8_SPT_LoadBundleEvenFaster-v$Version-win-x86_64.7z`")"
     Write-Log ""
     Write-Log "To install, extract the archive to your SPTarkov root directory."
 }
