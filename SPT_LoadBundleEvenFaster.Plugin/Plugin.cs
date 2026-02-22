@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using System.Buffers;
 using System.Runtime.InteropServices; // for Marshal
 
 using SPT.Custom.Patches;
@@ -72,12 +73,15 @@ namespace SPT_LoadBundleEvenFaster.Plugin
     [HarmonyPatch(typeof(BundleManager), nameof(BundleManager.ShouldAcquire))]
     class Patch_BundleManager_ShouldAcquire
     {
+        //cached Task<bool> to avoid creating new Task instances on every call when validation succeeded
+        private static readonly Task<bool> CachedFalseTask = Task.FromResult(false);
+
         [HarmonyPrefix]
         static bool Prefix(ref Task<bool> __result)
         {
             if (Plugin.ValidationSucceeded)
             {
-                __result = Task.FromResult(false);
+                __result = CachedFalseTask;
                 return false;
             }
             return true;
@@ -87,7 +91,7 @@ namespace SPT_LoadBundleEvenFaster.Plugin
     static class HelperMethods
     {
         // Dynamically get CPU thread count
-        private static readonly int MAX_CONCURRENT_CRC = Environment.ProcessorCount >= 20 ? 20 : Environment.ProcessorCount;
+        private static readonly int MAX_CONCURRENT_CRC = Environment.ProcessorCount >= 8 ? 8 : Environment.ProcessorCount;
         private static readonly System.Threading.SemaphoreSlim _crcSemaphore = new System.Threading.SemaphoreSlim(MAX_CONCURRENT_CRC);
 
         // Native delegate definition corresponding to the libcrc32_pclmulqdq.dll interface
@@ -144,8 +148,9 @@ namespace SPT_LoadBundleEvenFaster.Plugin
         private static async Task<uint> ComputeCrcStreamingAsync(string filepath)
         {
             const int bufferSize = 256 * 1024; // 256KB buffer
-            // Using unmanaged memory would be slightly faster for P/Invoke, but for C# fallback compatibility we use a pinned array
-            byte[] buffer = new byte[bufferSize];
+
+            // Use ArrayPool to minimize allocations and GC overhead during streaming
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
 
             // ⚠️ Logic branch:
             // If using the Native DLL (pclmulqdq): starting value is usually 0 and result doesn't need inversion.
@@ -155,7 +160,13 @@ namespace SPT_LoadBundleEvenFaster.Plugin
 
             try
             {
-                using (FileStream stream = File.OpenRead(filepath))
+                using (FileStream stream = new FileStream(
+                    filepath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read,
+                    bufferSize,
+                    FileOptions.SequentialScan | FileOptions.Asynchronous))
                 {
                     int bytesRead;
                     while ((bytesRead = await stream.ReadAsync(buffer, 0, bufferSize).ConfigureAwait(false)) > 0)
@@ -183,10 +194,16 @@ namespace SPT_LoadBundleEvenFaster.Plugin
                 // Native version usually returns the final CRC directly; C# version typically requires inversion
                 return _useNativeCrc ? crc : ~crc;
             }
+
             catch (Exception ex)
             {
                 Plugin.LogSource.LogError($"ComputeCrcStreamingAsync: Error reading file - {filepath}. Error: {ex.Message}");
                 throw;
+            }
+
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
             }
         }
 
